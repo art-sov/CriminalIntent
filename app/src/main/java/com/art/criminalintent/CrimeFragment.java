@@ -10,6 +10,9 @@ import android.support.v4.app.FragmentManager;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -37,6 +40,7 @@ public class CrimeFragment extends Fragment {
     private EditText mTitleField;
     private Button mDateButton;
     private Button mTimeButton;
+    private Button mDeleteButton;
     private CheckBox mSolvedCheckBox;
 
     public static CrimeFragment newInstance(UUID crimeId) {
@@ -85,6 +89,7 @@ public class CrimeFragment extends Fragment {
 
         mDateButton = (Button) v.findViewById(R.id.crime_date);
         mTimeButton = (Button) v.findViewById(R.id.crime_time);
+        mDeleteButton = (Button) v.findViewById(R.id.crime_delete);
 
         updateDate();
         mDateButton.setOnClickListener(new View.OnClickListener() {
@@ -106,6 +111,14 @@ public class CrimeFragment extends Fragment {
 
                 dialog.setTargetFragment(CrimeFragment.this, REQUEST_TIME);
                 dialog.show(manager, DIALOG_TIME);
+            }
+        });
+
+        mDeleteButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                CrimeLab.get(getActivity()).deleteCrime(mCrime);
+                getActivity().finish();
             }
         });
 
@@ -136,7 +149,7 @@ public class CrimeFragment extends Fragment {
             updateDate();        }
     }
 
-    private void updateDate() {
+       private void updateDate() {
 
         Date date = mCrime.getDate();
 
