@@ -7,7 +7,6 @@ import android.database.sqlite.SQLiteDatabase;
 
 import com.art.criminalintent.database.CrimeBaseHelper;
 import com.art.criminalintent.database.CrimeCursorWrapper;
-import com.art.criminalintent.database.CrimeDbSchema;
 import com.art.criminalintent.database.CrimeDbSchema.CrimeTable;
 
 import java.util.ArrayList;
@@ -55,7 +54,7 @@ public class CrimeLab {
     public Crime getCrime(UUID id) {
 
         CrimeCursorWrapper cursor = queryCrimes(
-                CrimeTable.Coal.UUID + " = ?",
+                CrimeTable.Cols.UUID + " = ?",
                 new String[] {id.toString()}
         );
 
@@ -72,10 +71,11 @@ public class CrimeLab {
 
     private static ContentValues getContentValues(Crime crime){
         ContentValues values = new ContentValues();
-        values.put(CrimeTable.Coal.UUID, crime.getId().toString());
-        values.put(CrimeTable.Coal.TITLE, crime.getTitle());
-        values.put(CrimeTable.Coal.DATE, crime.getDate().getTime());
-        values.put(CrimeTable.Coal.SOLVED, crime.isSolved() ? 1 : 0);
+        values.put(CrimeTable.Cols.UUID, crime.getId().toString());
+        values.put(CrimeTable.Cols.TITLE, crime.getTitle());
+        values.put(CrimeTable.Cols.DATE, crime.getDate().getTime());
+        values.put(CrimeTable.Cols.SOLVED, crime.isSolved() ? 1 : 0);
+        values.put(CrimeTable.Cols.SUSPECT, crime.getSuspect());
 
         return values;
     }
@@ -90,7 +90,7 @@ public class CrimeLab {
     public void deleteCrime(Crime crime){
 
         String uuidString = crime.getId().toString();
-        mDatabase.delete(CrimeTable.NAME,CrimeTable.Coal.UUID + " = ?",
+        mDatabase.delete(CrimeTable.NAME, CrimeTable.Cols.UUID + " = ?",
                 new String[] {uuidString});
     }
 
@@ -100,7 +100,7 @@ public class CrimeLab {
         ContentValues values = getContentValues(crime);
 
         mDatabase.update(CrimeTable.NAME, values,
-                CrimeTable.Coal.UUID + " = ?",
+                CrimeTable.Cols.UUID + " = ?",
                 new String[] { uuidString });
     }
 
