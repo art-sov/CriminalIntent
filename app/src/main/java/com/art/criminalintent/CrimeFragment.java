@@ -11,6 +11,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.app.ShareCompat;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
@@ -148,9 +149,16 @@ public class CrimeFragment extends Fragment {
         mReportButton.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View v) {
+
                 //создание неявного интента
-                Intent intent = new Intent(Intent.ACTION_SEND);
-                intent.setType("text/plain");
+//                Intent intent = new Intent(Intent.ACTION_SEND);
+//                intent.setType("text/plain");
+//
+                //использование ShareCompat.IntentBuilder
+                Intent intent = ShareCompat.IntentBuilder.from(getActivity())
+                        .setType("text/plain")
+                        .getIntent();
+
                 intent.putExtra(Intent.EXTRA_TEXT, getCrimeReport());
                 intent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crime_report_subject));
                 startActivity(intent);
