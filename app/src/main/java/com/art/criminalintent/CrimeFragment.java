@@ -2,13 +2,18 @@ package com.art.criminalintent;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,6 +37,7 @@ public class CrimeFragment extends Fragment {
 
     private static final int REQUEST_DATE = 0;
     private static final int REQUEST_TIME = 1;
+    private static final int REQUEST_CONTACT = 2;
 
     private Crime mCrime;
     private EditText mTitleField;
@@ -39,6 +45,8 @@ public class CrimeFragment extends Fragment {
     private Button mTimeButton;
     private Button mDeleteButton;
     private CheckBox mSolvedCheckBox;
+    private Button mReportButton;
+    private Button mSuspectButton;
 
     public static CrimeFragment newInstance(UUID crimeId) {
 
@@ -94,6 +102,8 @@ public class CrimeFragment extends Fragment {
         mDateButton = (Button) v.findViewById(R.id.crime_date);
         mTimeButton = (Button) v.findViewById(R.id.crime_time);
         mDeleteButton = (Button) v.findViewById(R.id.crime_delete);
+        mReportButton = (Button) v.findViewById(R.id.crime_report);
+        mSuspectButton = (Button) v.findViewById(R.id.crime_suspect);
 
         updateDate();
         mDateButton.setOnClickListener(new View.OnClickListener() {
@@ -134,6 +144,41 @@ public class CrimeFragment extends Fragment {
                 mCrime.setSolved(isChecked);
             }
         });
+
+        mReportButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                //создание неявного интента
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.setType("text/plain");
+                intent.putExtra(Intent.EXTRA_TEXT, getCrimeReport());
+                intent.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.crime_report_subject));
+                startActivity(intent);
+            }
+        });
+
+        //неявный интент для выбора из контактов в системе
+        final Intent pickContact = new Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI);
+
+        // фиктивный код для проверки фильтра
+        //pickContact.addCategory(Intent.CATEGORY_HOME);
+
+        mSuspectButton.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                startActivityForResult(pickContact, REQUEST_CONTACT);
+            }
+        });
+
+        if (mCrime.getSuspect() != null) {
+            mSuspectButton.setText(mCrime.getSuspect());
+        }
+
+        //защита от отсутствия контактных приложений
+        PackageManager packageManager = getActivity().getPackageManager();
+        if (packageManager.resolveActivity(pickContact, PackageManager.MATCH_DEFAULT_ONLY) == null) {
+            mSuspectButton.setEnabled(false);
+        }
         return v;
     }
 
@@ -147,11 +192,38 @@ public class CrimeFragment extends Fragment {
             mCrime.setDate(date);
             updateDate();
         }
+        else if (requestCode == REQUEST_CONTACT && data != null){
+            Uri contactUri = data.getData();
+
+            // определение полей, значение которых должно быть возвращены запросом
+            String[] queryFields = new String[] {ContactsContract.Contacts.DISPLAY_NAME};
+
+            //выполнение запроса - contactUri здесь выполняет функции условия "where"
+            Cursor c = getActivity().getContentResolver().query(contactUri,
+                    queryFields, null, null, null);
+            try {
+                //проверка полученных результатов
+                if (c.getCount() == 0) {
+                    return;
+                }
+                //извлечение первого столбца данных - имени подозреваемого
+                c.moveToFirst();
+                String suspect = c.getString(0);
+                mCrime.setSuspect(suspect);
+                mSuspectButton.setText(suspect);
+            } finally {
+                c.close();
+            }
+        }
         if (requestCode == REQUEST_TIME) {
             Date date = (Date) data.getSerializableExtra(TimePickerFragment.EXTRA_TIME);
             mCrime.setDate(date);
-            updateDate();        }
+            updateDate();
+        }
     }
+
+      //---------------------------------------------------------------------------------------
+      //Private methods
 
        private void updateDate() {
 
@@ -163,5 +235,30 @@ public class CrimeFragment extends Fragment {
 
         mDateButton.setText(format.format(date));
         mTimeButton.setText(formatTime.format(date));
+    }
+
+    private String getCrimeReport(){
+        String solvedString = null;
+        if (mCrime.isSolved()) {
+            solvedString = getString(R.string.crime_report_solved);
+        }
+        else {
+            solvedString = getString(R.string.crime_report_unsolved);
+        }
+
+        String dateFormat = "EEE, MMM dd";
+        String dateString = DateFormat.format(dateFormat, mCrime.getDate()).toString();
+
+        String suspect = mCrime.getSuspect();
+        if (suspect == null) {
+            suspect = getString(R.string.crime_report_no_suspect);
+        }
+        else {
+            suspect = getString(R.string.crime_report_suspect, suspect);
+        }
+
+        String report = getString(R.string.crime_report, mCrime.getTitle(), dateString, solvedString,
+                suspect);
+        return report;
     }
 }
