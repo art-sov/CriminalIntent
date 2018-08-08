@@ -15,6 +15,7 @@ import android.support.v4.app.ShareCompat;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +26,7 @@ import android.widget.EditText;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -32,6 +34,7 @@ import static android.widget.CompoundButton.*;
 
 public class CrimeFragment extends Fragment {
 
+    private static final String LOG_TAG = CrimeFragment.class.getName();
     private static final String ARG_CRIME_ID = "crime_id";
     private static final String DIALOG_DATE = "DialogDate";
     private static final String DIALOG_TIME = "DialogTime";
@@ -39,6 +42,7 @@ public class CrimeFragment extends Fragment {
     private static final int REQUEST_DATE = 0;
     private static final int REQUEST_TIME = 1;
     private static final int REQUEST_CONTACT = 2;
+    private static final int REQUEST_PHONE = 3;
 
     private Crime mCrime;
     private EditText mTitleField;
@@ -48,6 +52,7 @@ public class CrimeFragment extends Fragment {
     private CheckBox mSolvedCheckBox;
     private Button mReportButton;
     private Button mSuspectButton;
+    private Button mCallNumber;
 
     public static CrimeFragment newInstance(UUID crimeId) {
 
@@ -105,6 +110,7 @@ public class CrimeFragment extends Fragment {
         mDeleteButton = (Button) v.findViewById(R.id.crime_delete);
         mReportButton = (Button) v.findViewById(R.id.crime_report);
         mSuspectButton = (Button) v.findViewById(R.id.crime_suspect);
+        mCallNumber = (Button) v.findViewById(R.id.call_number);
 
         updateDate();
         mDateButton.setOnClickListener(new View.OnClickListener() {
@@ -187,20 +193,30 @@ public class CrimeFragment extends Fragment {
         if (packageManager.resolveActivity(pickContact, PackageManager.MATCH_DEFAULT_ONLY) == null) {
             mSuspectButton.setEnabled(false);
         }
+
+        mCallNumber.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v) {
+                startActivityForResult(pickContact, REQUEST_PHONE);
+            }
+        });
         return v;
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
+
         if (resultCode != Activity.RESULT_OK) {
             return;
         }
+
         if (requestCode == REQUEST_DATE) {
             Date date = (Date) data.getSerializableExtra(DatePickerFragment.EXTRA_DATE);
             mCrime.setDate(date);
             updateDate();
         }
-        else if (requestCode == REQUEST_CONTACT && data != null){
+        // выбор подозреваемого из списка контактов
+        if (requestCode == REQUEST_CONTACT && data != null){
             Uri contactUri = data.getData();
 
             // определение полей, значение которых должно быть возвращены запросом
@@ -223,13 +239,65 @@ public class CrimeFragment extends Fragment {
                 c.close();
             }
         }
+        // звонок подозреваемому
+        if (requestCode == REQUEST_PHONE && data != null) {
+
+            Uri contactUri = data.getData();
+
+            String [] queryFields = new String[] {ContactsContract.Contacts._ID};
+
+            try (Cursor cursor = getActivity().getContentResolver().query(
+                    contactUri,
+                    queryFields,
+                    null,
+                    null,
+                    null)) {
+
+                if (cursor.getCount() == 0) {
+                    return;
+                }
+
+                cursor.moveToFirst();
+                String id = cursor.getString(0);
+
+                Log.i(LOG_TAG, "id contact: " + id);
+
+                if (id != null) {
+
+                    Cursor phoneCursor = getActivity().getContentResolver().query(
+                            ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                            null,
+                            ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                            new String[] {id},
+                            null,
+                            null);
+                    phoneCursor.moveToFirst();
+
+                    String phoneNumber = phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                    Log.i(LOG_TAG, "phone contact: " + phoneNumber);
+
+                    Uri numberUri = Uri.parse("tel:" + phoneNumber);
+                    Intent intent = new Intent(Intent.ACTION_DIAL, numberUri);
+
+                    // проверка наличия приложений, реагирующего на интент
+                    PackageManager packageManager = getActivity().getPackageManager();
+                    List activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+                    boolean isIntentSafe = activities.size() > 0;
+
+                    if (isIntentSafe)
+                        startActivity(intent);
+                    else
+                        Log.i(LOG_TAG, " Нет подходящего приложения для звонка");
+                }
+            }
+        }
         if (requestCode == REQUEST_TIME) {
             Date date = (Date) data.getSerializableExtra(TimePickerFragment.EXTRA_TIME);
             mCrime.setDate(date);
             updateDate();
         }
     }
-
+t branch
       //---------------------------------------------------------------------------------------
       //Private methods
 
