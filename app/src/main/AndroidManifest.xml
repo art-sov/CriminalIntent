@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.art.criminalintent">
 
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <uses-permission android:name="android.permission.CALL_PHONE"/>
 
@@ -24,6 +26,19 @@
             android:parentActivityName=".CrimeListActivity">
 
         </activity>
+        <!--объявление FileProvider связанного с конкретным хранилищем-->
+        <!--grantUriPermissions - для разблокировки функциональности установки
+        флага Intent.FLAG_GRANT_WRITE_URI_PERMISSION-->
+
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="com.art.criminalintent.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/files"/>
+        </provider>
     </application>
 
 </manifest>
